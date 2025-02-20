@@ -69,7 +69,10 @@
             <artifactId>awaitility</artifactId>
             <scope>test</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.json.wso2</groupId>
+            <artifactId>json</artifactId>
+        </dependency>
 
         <!--Prometheus-->
         <dependency>
@@ -91,6 +94,27 @@
         <dependency>
             <groupId>org.wso2.msf4j</groupId>
             <artifactId>msf4j-core</artifactId>
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>com.nimbusds</groupId>-->
+<!--                    <artifactId>nimbus-jose-jwt</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
+
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.analytics</groupId>
+            <artifactId>org.wso2.carbon.analytics.msf4j.interceptor.common</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>io.swagger</groupId>
+            <artifactId>swagger-annotations</artifactId>
         </dependency>
     </dependencies>
 
@@ -115,7 +139,11 @@
                         <Export-Package>
                             org.wso2.carbon.si.metrics.core.*,
                             io.prometheus.client.*,
-                            org.wso2.carbon.si.metrics.prometheus.reporter.*
+                            org.wso2.carbon.si.metrics.prometheus.reporter.*,
+                            org.wso2.carbon.si.metrics.icp.reporter.*,
+                            net.minidev.*,
+                            org.apache.http.*,
+                            com.nimbusds.*,
                         </Export-Package>
                         <Import-Package>
                             org.yaml.snakeyaml.*; version="${org.snakeyaml.import.version.range}",
@@ -168,4 +196,9 @@
             </plugin>
         </plugins>
     </build>
+    <properties>
+        <carbon.component>
+            osgi.service; objectClass="org.wso2.msf4j.Microservice"; serviceCount="1"
+        </carbon.component>
+    </properties>
 </project>

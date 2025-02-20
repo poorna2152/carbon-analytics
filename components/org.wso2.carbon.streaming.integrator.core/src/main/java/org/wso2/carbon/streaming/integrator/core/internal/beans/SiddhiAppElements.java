@@ -26,6 +26,7 @@ import java.util.Map;
  * Bean class to hold the elements of siddhi application.
  */
 public class SiddhiAppElements {
+    private String appName;
     private String inputStreamType;
     private String outputStreamType;
     private String inputStreamId;
@@ -46,6 +47,12 @@ public class SiddhiAppElements {
     private String sink;
     private String sinkStream;
     private String sinkSiddhiApp;
+    private String tableId;
+    private String annotation;
+    private String windowId;
+    private String windowName;
+    private String table;
+    private String window;
 
     public String getPartitions() {
         return partitions;
@@ -215,5 +222,61 @@ public class SiddhiAppElements {
 
     public void setSinkSiddhiApp(String sinkSiddhiApp) {
         this.sinkSiddhiApp = sinkSiddhiApp;
+    }
+
+    public String getAnnotation() {
+        return annotation;
+    }
+
+    public String getTableId() {
+        return tableId;
+    }
+
+    public void setAnnotation(String annotation) {
+        this.annotation = annotation;
+    }
+
+    public void setTableId(String tableId) {
+        this.tableId = tableId;
+    }
+
+    public String getWindowId() {
+        return windowId;
+    }
+
+    public void setWindowId(String windowId) {
+        this.windowId = windowId;
+    }
+
+    public String getWindowName() {
+        return windowName;
+    }
+
+    public void setWindowName(String windowName) {
+        this.windowName = windowName;
+    }
+
+    public String getAppName() {
+        return appName;
+    }
+
+    public void setAppName(String appName) {
+        this.appName = appName;
+    }
+
+    public String getTable() {
+        return table;
+    }
+
+    public String getWindow() {
+        return window;
+    }
+
+    public void setTable(String table) {
+        this.table = table;
+    }
+
+    public void setWindow(String window) {
+        this.window = window;
     }
 }
