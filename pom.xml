@@ -341,6 +341,154 @@
         <tag>v3.0.69</tag>
     </scm>
 
+     <repositories>
+                <repository>
+                    <id>updates2-nexus</id>
+                    <name>Support Nexus Repository of WSO2</name>
+                    <url>https://support-maven.wso2.org/nexus/content/repositories/updates-2.0/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                        <checksumPolicy>fail</checksumPolicy>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+                <repository>
+                    <id>uat-nexus-internal-public</id>
+                    <url>https://support-maven.wso2.org/nexus/content/groups/public</url>
+                    <releases>
+                        <enabled>false</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+                <repository>
+                    <id>uat-nexus-internal-repositories</id>
+                    <url>https://support-maven.wso2.org/nexus/content/repositories/releases/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+                <repository>
+                    <id>uat-nexus-internal-snapshots</id>
+                    <url>https://support-maven.wso2.org/nexus/content/repositories/snapshots/</url>
+                    <releases>
+                        <enabled>false</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                        <checksumPolicy>daily</checksumPolicy>
+                    </snapshots>
+                </repository>
+                <repository>
+                    <id>wso2releases</id>
+                    <name>WSO2 internal Repository</name>
+                    <url>https://maven.wso2.org/nexus/content/repositories/releases/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                        <checksumPolicy>ignore</checksumPolicy>
+                    </releases>
+                </repository>
+                <repository>
+                    <id>wso2snapshots</id>
+                    <name>Apache Snapshot Repository</name>
+                    <url>https://maven.wso2.org/nexus/content/repositories/snapshots/</url>
+                    <snapshots>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                    </snapshots>
+                    <releases>
+                        <enabled>false</enabled>
+                    </releases>
+                </repository>
+                <repository>
+                    <id>wso2nexus</id>
+                    <name>WSO2 internal Repository</name>
+                    <url>https://maven.wso2.org/nexus/content/groups/wso2-public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                        <checksumPolicy>ignore</checksumPolicy>
+                    </releases>
+                </repository>
+                <repository>
+                    <id>spring io release repo</id>
+                    <name>spring-io-release</name>
+                    <url>http://repo.spring.io/release</url>
+                </repository>
+                <repository>
+                    <id>spring-io-plugin</id>
+                    <name>spring io plugin release repo</name>
+                    <url>http://repo.spring.io/plugins-release</url>
+                </repository>
+            </repositories>
+            <pluginRepositories>
+		            <pluginRepository>
+				            <id>wso2-nexus-public</id>
+				            <url>https://maven.wso2.org/nexus/content/repositories/public/</url>
+				        </pluginRepository>
+                <pluginRepository>
+                    <id>uat-nexus-internal</id>
+                    <url>https://support-maven.wso2.org/nexus/content/groups/public</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>wso2.releases</id>
+                    <name>WSO2 internal Repository</name>
+                    <url>http://maven.wso2.org/nexus/content/repositories/releases/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                        <checksumPolicy>ignore</checksumPolicy>
+                    </releases>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>wso2.snapshots</id>
+                    <name>Apache Snapshot Repository</name>
+                    <url>http://maven.wso2.org/nexus/content/repositories/snapshots/</url>
+                    <snapshots>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                    </snapshots>
+                    <releases>
+                        <enabled>false</enabled>
+                    </releases>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>wso2-nexus</id>
+                    <name>WSO2 internal Repository</name>
+                    <url>http://maven.wso2.org/nexus/content/groups/wso2-public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                        <updatePolicy>daily</updatePolicy>
+                        <checksumPolicy>ignore</checksumPolicy>
+                    </releases>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>spring io release repo</id>
+                    <name>spring-io-release</name>
+                    <url>http://repo.spring.io/release</url>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>spring-io-plugin</id>
+                    <name>spring io plugin release repo</name>
+                    <url>http://repo.spring.io/plugins-release</url>
+                </pluginRepository>
+            </pluginRepositories>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -1654,6 +1802,7 @@
     </dependencyManagement>
 
     <properties>
+        <nimbus-jose.orbit.imp.pkg.version>[9.22,10.0)</nimbus-jose.orbit.imp.pkg.version>
         <carbon.analytics.version>3.0.69</carbon.analytics.version>
         <siddhi.version>5.1.28</siddhi.version>
         <siddhi.bundle.version>5.1.28</siddhi.bundle.version>

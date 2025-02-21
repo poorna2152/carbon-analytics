@@ -87,6 +87,8 @@
         <export.package>
             !org.wso2.carbon.analytics.msf4j.interceptor.common.internal,
             org.wso2.carbon.analytics.msf4j.interceptor.common.*;version="${project.version}",
+            com.nimbusds.*,
+            net.minidev.*
         </export.package>
     </properties>
 </project>

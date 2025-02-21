@@ -19,8 +19,12 @@ package org.wso2.carbon.streaming.integrator.core.impl;
 import com.google.gson.Gson;
 import io.siddhi.core.SiddhiAppRuntime;
 import io.siddhi.core.SiddhiManager;
+import io.siddhi.core.query.QueryRuntime;
+import io.siddhi.core.query.QueryRuntimeImpl;
 import io.siddhi.core.stream.input.source.Source;
 import io.siddhi.core.stream.output.sink.Sink;
+import io.siddhi.core.window.Window;
+import io.siddhi.core.table.Table;
 import io.siddhi.core.util.snapshot.PersistenceReference;
 import io.siddhi.core.util.statistics.metrics.Level;
 import io.siddhi.query.api.SiddhiApp;
@@ -211,6 +215,63 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
         }
 
         return Response.status(status).entity(jsonString).build();
+    }
+
+    public Response siddhiAppDeactivate(String appName) throws NotFoundException {
+        String jsonString;
+        Response.Status status = Response.Status.OK;
+        Map<String, SiddhiAppData> siddhiAppMap = StreamProcessorDataHolder.getStreamProcessorService().getSiddhiAppMap();
+
+        if (!siddhiAppMap.containsKey(appName)) {
+            jsonString = new Gson().toJson(new ApiResponseMessage(ApiResponseMessage.NOT_FOUND,
+                    "There is no Siddhi App exist " +
+                            "with provided name : " + appName));
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonString).build();
+        }
+
+        try {
+            String siddhiAppString = siddhiAppMap.get(appName).getSiddhiApp();
+            SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+            SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+            siddhiAppRuntime.shutdown();
+            siddhiAppMap.get(appName).setActive(false);
+            return Response.status(status).build();
+        } catch (Exception e) {
+            jsonString = new Gson().
+                    toJson(new ApiResponseMessageWithCode(ApiResponseMessageWithCode.VALIDATION_ERROR,
+                            e.getMessage()));
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonString).build();
+        }
+    }
+
+    public Response siddhiAppActivate(String appName) throws NotFoundException {
+        String jsonString;
+        Map<String, SiddhiAppData> siddhiAppMap = StreamProcessorDataHolder.getStreamProcessorService().getSiddhiAppMap();
+
+        if (!siddhiAppMap.containsKey(appName)) {
+            jsonString = new Gson().toJson(new ApiResponseMessage(ApiResponseMessage.NOT_FOUND,
+                    "There is no Siddhi App exist " +
+                            "with provided name : " + appName));
+            return Response.status(Response.Status.NOT_FOUND).entity(jsonString).build();
+        }
+
+        SiddhiAppData siddhiAppData = siddhiAppMap.get(appName);
+        try {
+            String siddhiAppString = siddhiAppMap.get(appName).getSiddhiApp();
+            SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+            SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+            if (siddhiAppData.isActive()) {
+                return Response.status(Response.Status.OK).build();
+            }
+            siddhiAppRuntime.start();
+            siddhiAppMap.get(appName).setActive(true);
+            return Response.status(Response.Status.OK).build();
+        } catch (Exception e) {
+            jsonString = new Gson().
+                    toJson(new ApiResponseMessageWithCode(ApiResponseMessageWithCode.VALIDATION_ERROR,
+                            e.getMessage()));
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(jsonString).build();
+        }
     }
 
     public Response siddhiAppsAppNameGet(String appName) throws NotFoundException {
@@ -553,15 +614,124 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
                 }
             }
 
-            loadAggregarionData(siddhiApp, siddhiAppRuntime, listOfSiddhiAppElements, siddhiAppString);
-            loadSources(siddhiApp, siddhiAppRuntime, listOfSiddhiAppElements, siddhiAppString);
-            loadSinks(siddhiApp, siddhiAppRuntime, listOfSiddhiAppElements, siddhiAppString);
+            loadAggregarionData(siddhiApp, siddhiAppRuntime, listOfSiddhiAppElements, siddhiAppString, appName, siddhiAppDataMap.get(appName).isActive());
+            loadSources(siddhiApp, siddhiAppRuntime, listOfSiddhiAppElements, siddhiAppString, appName, siddhiAppDataMap.get(appName).isActive());
+            loadSinks(siddhiApp, siddhiAppRuntime, listOfSiddhiAppElements, siddhiAppString, appName, siddhiAppDataMap.get(appName).isActive());
             return Response.ok().entity(listOfSiddhiAppElements).build();
         }
 
         String jsonString = new Gson().toJson(new ApiResponseMessage(ApiResponseMessage.NOT_FOUND,
                 "There is no Siddhi App exist with provided name : " + appName));
         return Response.status(Response.Status.NOT_FOUND).entity(jsonString).build();
+    }
+
+    public Response siddhiAppsSourcesGet() {
+        Map<String, SiddhiAppData> siddhiAppDataMap = StreamProcessorDataHolder.getStreamProcessorService()
+                .getSiddhiAppMap();
+        List<SiddhiAppElements> listOfSiddhiAppSources = new ArrayList<>();
+        for (Map.Entry<String, SiddhiAppData> siddhiAppData : siddhiAppDataMap.entrySet()) {
+            String appName = siddhiAppData.getKey();
+            String siddhiAppString = siddhiAppData.getValue().getSiddhiApp();
+            try {
+                SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+                SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+                loadSources(siddhiApp, siddhiAppRuntime, listOfSiddhiAppSources, siddhiAppString, appName, siddhiAppData.getValue()
+                        .isActive());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+        return Response.ok().entity(listOfSiddhiAppSources).build();
+    }
+
+    public Response siddhiAppsSinksGet() {
+        Map<String, SiddhiAppData> siddhiAppDataMap = StreamProcessorDataHolder.getStreamProcessorService()
+                .getSiddhiAppMap();
+        List<SiddhiAppElements> listOfSiddhiAppSinks = new ArrayList<>();
+        for (Map.Entry<String, SiddhiAppData> siddhiAppData : siddhiAppDataMap.entrySet()) {
+            String appName = siddhiAppData.getKey();
+            String siddhiAppString = siddhiAppData.getValue().getSiddhiApp();
+            try {
+                SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+                SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+                loadSinks(siddhiApp, siddhiAppRuntime, listOfSiddhiAppSinks, siddhiAppString, appName, siddhiAppData.getValue().isActive());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+        return Response.ok().entity(listOfSiddhiAppSinks).build();
+    }
+
+    public Response siddhiAppsQueriesGet() {
+        Map<String, SiddhiAppData> siddhiAppDataMap = StreamProcessorDataHolder.getStreamProcessorService()
+                .getSiddhiAppMap();
+        List<SiddhiAppElements> listOfSiddhiAppQueries = new ArrayList<>();
+        for (Map.Entry<String, SiddhiAppData> siddhiAppData : siddhiAppDataMap.entrySet()) {
+            String appName = siddhiAppData.getKey();
+            String siddhiAppString = siddhiAppData.getValue().getSiddhiApp();
+            try {
+                SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+                SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+                loadQueries(siddhiApp, siddhiAppRuntime, listOfSiddhiAppQueries, siddhiAppString, appName, siddhiAppData.getValue().isActive());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+        return Response.ok().entity(listOfSiddhiAppQueries).build();
+    }
+
+    public Response siddhiAppsTablesGet() {
+        Map<String, SiddhiAppData> siddhiAppDataMap = StreamProcessorDataHolder.getStreamProcessorService()
+                .getSiddhiAppMap();
+        List<SiddhiAppElements> listOfSiddhiAppTables = new ArrayList<>();
+        for (Map.Entry<String, SiddhiAppData> siddhiAppData : siddhiAppDataMap.entrySet()) {
+            String appName = siddhiAppData.getKey();
+            String siddhiAppString = siddhiAppData.getValue().getSiddhiApp();
+            try {
+                SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+                SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+                loadTables(siddhiApp, siddhiAppRuntime, listOfSiddhiAppTables, siddhiAppString, appName, siddhiAppData.getValue().isActive());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+        return Response.ok().entity(listOfSiddhiAppTables).build();
+    }
+
+    public Response siddhiAppsWindowsGet() {
+        Map<String, SiddhiAppData> siddhiAppDataMap = StreamProcessorDataHolder.getStreamProcessorService()
+                .getSiddhiAppMap();
+        List<SiddhiAppElements> listOfSiddhiAppWindows = new ArrayList<>();
+        for (Map.Entry<String, SiddhiAppData> siddhiAppData : siddhiAppDataMap.entrySet()) {
+            String appName = siddhiAppData.getKey();
+            String siddhiAppString = siddhiAppData.getValue().getSiddhiApp();
+            try {
+                SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+                SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+                loadWindows(siddhiApp, siddhiAppRuntime, listOfSiddhiAppWindows, siddhiAppString, appName, siddhiAppData.getValue().isActive());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+        return Response.ok().entity(listOfSiddhiAppWindows).build();
+    }
+
+    public Response siddhiAppsAggregationsGet() {
+        Map<String, SiddhiAppData> siddhiAppDataMap = StreamProcessorDataHolder.getStreamProcessorService()
+                .getSiddhiAppMap();
+        List<SiddhiAppElements> listOfSiddhiAppAggregations = new ArrayList<>();
+        for (Map.Entry<String, SiddhiAppData> siddhiAppData : siddhiAppDataMap.entrySet()) {
+            String appName = siddhiAppData.getKey();
+            String siddhiAppString = siddhiAppData.getValue().getSiddhiApp();
+            try {
+                SiddhiApp siddhiApp = SiddhiCompiler.parse(String.valueOf(siddhiAppString));
+                SiddhiAppRuntime siddhiAppRuntime = new SiddhiManager().createSiddhiAppRuntime(siddhiApp);
+                loadAggregarionData(siddhiApp, siddhiAppRuntime, listOfSiddhiAppAggregations, siddhiAppString, appName, siddhiAppDataMap.get(appName).isActive());
+            } catch (Exception e) {
+                continue;
+            }
+        }
+        return Response.ok().entity(listOfSiddhiAppAggregations).build();
     }
 
     public Response siddhiAppExistsGet(String siddhiAppName) {
@@ -774,16 +944,25 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
      * Obtains information of all the Aggregations.
      */
     private void loadAggregarionData(SiddhiApp siddhiApp, SiddhiAppRuntime siddhiAppRuntime, List<SiddhiAppElements>
-            streams, String appData) {
+            streams, String appData, String appName, boolean active) {
         for (AggregationDefinition aggregationDefinition : siddhiApp.getAggregationDefinitionMap().values()) {
             SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
+            siddhiAppElements.setAppName(appName);
             siddhiAppElements.setInputStreamId(aggregationDefinition.getBasicSingleInputStream().getStreamId());
             siddhiAppElements.setOutputStreamId(aggregationDefinition.getId());
             loadInputData(siddhiApp, siddhiAppRuntime, aggregationDefinition.getBasicSingleInputStream()
                     .getStreamId(), appData, siddhiAppElements);
             String aggregationDefinitionStr = getDefinition(aggregationDefinition, appData);
+            for (Annotation annotation : aggregationDefinition.getAnnotations()) {
+                for(Element element : annotation.getElements()) {
+                    if (element.getKey() != null) {
+                        siddhiAppElements.addAnnotationElement(element.getKey(), element.getValue());
+                    }
+                }
+            }
             siddhiAppElements.setOutputStreamSiddhiApp(aggregationDefinitionStr);
             siddhiAppElements.setOutputStreamType(Constants.AGGREGATION);
+            siddhiAppElements.setIsActive(String.valueOf(active));
             streams.add(siddhiAppElements);
         }
     }
@@ -841,13 +1020,14 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
      * Load source related data
      */
     private void loadSources(SiddhiApp siddhiApp, SiddhiAppRuntime siddhiAppRuntime, List<SiddhiAppElements>
-            listOfSiddhiAppElements, String siddhiAppString) {
+            listOfSiddhiAppElements, String siddhiAppString, String appName, boolean active) {
         for (List<Source> sources : siddhiAppRuntime.getSources()) {
             for (Source source : sources) {
+                SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
                 for (Annotation annotation : source.getStreamDefinition().getAnnotations()) {
                     for (Element element : annotation.getElements()) {
                         if (Objects.equals(element.getValue(), source.getType())) {
-                            SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
+                            siddhiAppElements.setAppName(appName);
                             siddhiAppElements.setOutputStreamId(source.getStreamDefinition().getId());
                             siddhiAppElements.setInputStreamId(source.getType());
                             siddhiAppElements.setInputStreamType(Constants.SOURCE_TYPE);
@@ -855,10 +1035,13 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
                                     siddhiAppString,
                                     siddhiAppElements);
                             siddhiAppElements.setInputStreamSiddhiApp(getDefinition(annotation, siddhiAppString));
-                            listOfSiddhiAppElements.add(siddhiAppElements);
+                            siddhiAppElements.setIsActive(String.valueOf(active));
+                        } else if (element.getKey() != null) {
+                            siddhiAppElements.addAnnotationElement(element.getKey(), element.getValue());
                         }
                     }
                 }
+                listOfSiddhiAppElements.add(siddhiAppElements);
             }
         }
     }
@@ -867,14 +1050,14 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
      * Load sink related data
      */
     private void loadSinks(SiddhiApp siddhiApp, SiddhiAppRuntime siddhiAppRuntime, List<SiddhiAppElements>
-            listOfSiddhiAppElements, String
-                                   siddhiAppString) {
+            listOfSiddhiAppElements, String siddhiAppString, String appName, boolean active) {
         for (List<Sink> sinks : siddhiAppRuntime.getSinks()) {
             for (Sink sink : sinks) {
+                SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
                 for (Annotation annotation : sink.getStreamDefinition().getAnnotations()) {
                     for (Element element : annotation.getElements()) {
                         if (Objects.equals(element.getValue(), sink.getType())) {
-                            SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
+                            siddhiAppElements.setAppName(appName);
                             siddhiAppElements.setInputStreamId(sink.getStreamDefinition().getId());
                             loadInputData(siddhiApp, siddhiAppRuntime, sink.getStreamDefinition().getId(),
                                     siddhiAppString,
@@ -882,11 +1065,80 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
                             siddhiAppElements.setOutputStreamId(sink.getType());
                             siddhiAppElements.setOutputStreamType(Constants.SINK_TYPE);
                             siddhiAppElements.setOutputStreamSiddhiApp(getDefinition(annotation, siddhiAppString));
-                            listOfSiddhiAppElements.add(siddhiAppElements);
+                            siddhiAppElements.setIsActive(String.valueOf(active));
+                        } else if (element.getKey() != null) {
+                            siddhiAppElements.addAnnotationElement(element.getKey(), element.getValue());
                         }
                     }
                 }
+                listOfSiddhiAppElements.add(siddhiAppElements);
             }
+        }
+    }
+
+    /**
+     * Load query related data
+     */
+    private void loadQueries(SiddhiApp siddhiApp, SiddhiAppRuntime siddhiAppRuntime, List<SiddhiAppElements>
+            listOfSiddhiAppElements, String siddhiAppString, String appName, boolean active) {
+        for (QueryRuntime queryRuntime : siddhiAppRuntime.getQueries()) {
+            QueryRuntimeImpl queryRutimeImpl = (QueryRuntimeImpl) queryRuntime;
+            SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
+            siddhiAppElements.setAppName(appName);
+            siddhiAppElements.setQueryName(queryRuntime.getQueryId());
+            siddhiAppElements.setInputStreamId(String.join(",", queryRutimeImpl.getInputStreamId()));
+            siddhiAppElements.setOutputStreamId(queryRuntime.getQuery().getOutputStream().getId());
+            siddhiAppElements.setQuery(getDefinition(queryRuntime.getQuery(), siddhiAppString));
+            siddhiAppElements.setOutputStreamType(Constants.QUERY_TYPE);
+            siddhiAppElements.setIsActive(String.valueOf(active));
+            listOfSiddhiAppElements.add(siddhiAppElements);
+        }
+    }
+
+    /**
+     * Load table related data
+     */
+    private void loadTables(SiddhiApp siddhiApp, SiddhiAppRuntime siddhiAppRuntime, List<SiddhiAppElements>
+            listOfSiddhiAppElements, String siddhiAppString, String appName, boolean active) {
+        for (Table table : siddhiAppRuntime.getTables()) {
+            SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
+            siddhiAppElements.setAppName(appName);
+            siddhiAppElements.setTable(getDefinition(table.getTableDefinition(), siddhiAppString));
+            siddhiAppElements.setTableId(table.getTableDefinition().getId());
+            for (Annotation annotation : table.getTableDefinition().getAnnotations()) {
+                for(Element element : annotation.getElements()) {
+                    if (element.getKey() != null) {
+                        siddhiAppElements.addAnnotationElement(element.getKey(), element.getValue());
+                    }
+                }
+            }
+            siddhiAppElements.setOutputStreamType(Constants.TABLE_TYPE);
+            siddhiAppElements.setIsActive(String.valueOf(active));
+            listOfSiddhiAppElements.add(siddhiAppElements);
+        }
+    }
+
+    /**
+     * Load window related data
+     */
+    private void loadWindows(SiddhiApp siddhiApp, SiddhiAppRuntime siddhiAppRuntime, List<SiddhiAppElements>
+            listOfSiddhiAppElements, String siddhiAppString, String appName, boolean active) {
+        for (Window window : siddhiAppRuntime.getWindows()) {
+            SiddhiAppElements siddhiAppElements = new SiddhiAppElements();
+            siddhiAppElements.setAppName(appName);
+            siddhiAppElements.setWindow(getDefinition(window.getWindowDefinition(), siddhiAppString));
+            siddhiAppElements.setWindowId(window.getWindowDefinition().getId());
+            for (Annotation annotation : window.getWindowDefinition().getAnnotations()) {
+                for(Element element : annotation.getElements()) {
+                    if (element.getKey() != null) {
+                        siddhiAppElements.addAnnotationElement(element.getKey(), element.getValue());
+                    }
+                }
+            }
+            siddhiAppElements.setWindowName(window.getWindowDefinition().getWindow().getName());
+            siddhiAppElements.setOutputStreamType(Constants.WINDOW_TYPE);
+            siddhiAppElements.setIsActive(String.valueOf(active));
+            listOfSiddhiAppElements.add(siddhiAppElements);
         }
     }
 
@@ -932,6 +1184,28 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
                     "Apps").build();
         }
         return siddhiAppsAppNameDelete(appFileName);
+
+    }
+
+    public Response siddhiAppsAppDeactivate(String appFileName, Request request) throws NotFoundException {
+
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to undeploy Siddhi " +
+                    "Apps").build();
+        }
+        return siddhiAppDeactivate(appFileName);
+
+    }
+
+    public Response siddhiAppsAppActivate(String appFileName, Request request) throws NotFoundException {
+
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to deploy Siddhi " +
+                    "Apps").build();
+        }
+        return siddhiAppActivate(appFileName);
 
     }
 
@@ -1054,6 +1328,67 @@ public class SiddhiAppsApiServiceImpl extends SiddhiAppsApiService {
         }
         return siddhiAppElementsGet(appName);
     }
+
+    @Override
+    public Response siddhiAppsSourcesGet(Request request) {
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to enable/disable " +
+                    "stats for all Siddhi App").build();
+        }
+        return this.siddhiAppsSourcesGet();
+    }
+
+    @Override
+    public Response siddhiAppsSinksGet(Request request) {
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to enable/disable " +
+                    "stats for all Siddhi App").build();
+        }
+        return this.siddhiAppsSinksGet();
+    }
+
+    @Override
+    public Response siddhiAppsQueriesGet(Request request) {
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to enable/disable " +
+                    "stats for all Siddhi App").build();
+        }
+        return this.siddhiAppsQueriesGet();
+    }
+
+    @Override
+    public Response siddhiAppsTablesGet(Request request) {
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to enable/disable " +
+                    "stats for all Siddhi App").build();
+        }
+        return this.siddhiAppsTablesGet();
+    }
+
+    @Override
+    public Response siddhiAppsWindowsGet(Request request) {
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to enable/disable " +
+                    "stats for all Siddhi App").build();
+        }
+        return this.siddhiAppsWindowsGet();
+    }
+
+    @Override
+    public Response siddhiAppsAggregationsGet(Request request) {
+        if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new
+                Permission(PERMISSION_APP_NAME, MANAGE_SIDDHI_APP_PERMISSION_STRING))) {
+            return Response.status(Response.Status.UNAUTHORIZED).entity("Insufficient permissions to enable/disable " +
+                    "stats for all Siddhi App").build();
+        }
+        return this.siddhiAppsAggregationsGet();
+    }
+
 
     public Response siddhiAppExistsGet(String siddhiAppName, Request request) throws NotFoundException {
         if (getUserName(request) != null && !getPermissionProvider().hasPermission(getUserName(request), new

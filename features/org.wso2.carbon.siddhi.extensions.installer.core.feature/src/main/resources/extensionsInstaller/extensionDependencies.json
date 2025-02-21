@@ -1504,6 +1504,21 @@
           }
         ],
         "lookupRegex": "siddhi([_-])io([_-])hl7([_-])[0-9]+.[0-9]+.[\\.0-9]+.jar"
+      },
+      {
+        "name": "xercesImpl",
+        "version": "2.12.2.wso2v1",
+        "download": {
+          "autoDownloadable": true,
+          "url": "https://maven.wso2.org/nexus/content/repositories/public/org/wso2/orbit/xerces/xercesImpl/2.12.2.wso2v1/xercesImpl-2.12.2.wso2v1.jar"
+        },
+        "usages": [
+          {
+            "type": "BUNDLE",
+            "usedBy": "RUNTIME"
+          }
+        ],
+        "lookupRegex": "xercesImpl([_-])2.12.2.wso2v1(.*).jar"
       }
     ]
   },
